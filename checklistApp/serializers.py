@@ -114,15 +114,12 @@ class OptionsSerializer(serializers.ModelSerializer):
         model = Options
         fields = '__all__'
 
-
-# class checklistTypeSerializer(serializers.Serializer):
-#     class Meta:
-#         model = ChecklistType
-#         fields = '__all__'
-
-
-
-# class CaptchaCountSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Captcha
-#         fields = ['count']
+class AppInfoSerializer(serializers.ModelSerializer):
+    app_name = serializers.CharField()
+    app_category = serializers.CharField()
+    reviewer_id = serializers.IntegerField()
+    auditor_id = serializers.IntegerField(required=False)
+    remark=serializers.CharField(required=False)
+    class Meta:
+        model = AppInfo
+        exclude = ['auditor_assigned_date']

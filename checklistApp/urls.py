@@ -16,5 +16,7 @@ urlpatterns = [
     path('logout', UserLogout.as_view()),
     path('audrevmap', AudRevMapView.as_view()),
     path('manage_checklist', ChecklistTypeView.as_view()),
-    path('options', OptionsView.as_view())
+    path('options', OptionsView.as_view()),
+    path('app_info', AppInfoView.as_view()),
+    path('user_appinfo', UserAppInfoApiview.as_view()),
 ]

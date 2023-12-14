@@ -17,7 +17,7 @@ from rest_framework import serializers
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework import generics
-
+from datetime import date
 
 from django.contrib.sessions.models import Session
 # from django.contrib.auth.models import Group  # Import the Group class
@@ -254,15 +254,12 @@ class UserApi(APIView):
             data = OrderedDict()
             data.update(request.data)
             user = User.objects.get(id=request.data['id'])
-            print("this is id",request.data['id'])
             ser = UserSerializer(user, data = request.data, partial=True)
-            print("---------==========>>>>>",ser)
             if ser.is_valid():
                 ser.save()
                 return Response({'status-code': 200,"errors": [], 'message': 'User Data is updated'})
             return Response({'status-code':403, 'message':'Something went wrong','errors':ser.errors})
         except Exception as e:
-            print('--->',e)
             return Response({'status-code':403, 'message':'Invalid id in the url'})
         
     def delete(self, request, id=None):
@@ -595,67 +592,65 @@ class OptionsView(APIView):
             return Response({'status-code':400, 'message':'Invalid Option', 'errors': serializer.errors},status=status.HTTP_400_BAD_REQUEST)
         raise serializers.ValidationError(str(option_data['id'])+" is an Invalid id")
 
+class AppInfoView(APIView):
+    def post(self,request):
+        app_info_data = request.data
+        if not request.data.get('app_name'):
+            raise serializers.ValidationError("Application name is required !")
+        existing_app = AppInfo.objects.filter(app_name=app_info_data['app_name'])
+        rev_id = app_info_data.get('reviewer_id')
+        reviewer = User.objects.filter(id=rev_id)
+        if len(reviewer)>0:
+            if reviewer[0].role not in ['Reviewer' , 'reviewer']:
+                raise serializers.ValidationError(str(rev_id) + " is not a Reviewer!")
+        else:
+            raise serializers.ValidationError("Reviewer Does Not exists with id:" + str(rev_id))
+        if len(existing_app) > 0:
+            return Response({'status-code':400, 'message': app_info_data['app_name'] + ' already exists ..!'},status=status.HTTP_400_BAD_REQUEST)
+        if rev_id is not None:
+            app_info_data['reviewer_assigned_date'] = date.today()
+        serializer = AppInfoSerializer(data=app_info_data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'status-code':200, 'error':[],'message':'Application added successfully','payload':serializer.data})
+        return Response({'status-code':400, 'message':'Invalid Option', 'errors': serializer.errors})
+    
+    def get(self, request):
+        app_info = AppInfo.objects.all()
+        serializer = AppInfoSerializer(app_info, many=True)
+        return Response({'status-code':200, 'payload':serializer.data},status=status.HTTP_200_OK)
 
+    def patch(self, request):
+        app_info_data = request.data
+        rev_id = app_info_data.get('reviewer_id')
+        existing_app = AppInfo.objects.filter(app_name=app_info_data['app_name'])   
+        if len(existing_app) > 0:
+            existing_rev = existing_app[0].reviewer_id
+            if rev_id != existing_rev:
+                app_info_data['reviewer_assigned_date'] = date.today()
+            serializer = AppInfoSerializer(existing_app[0], data = app_info_data, partial=True) 
+            if serializer.is_valid():
+                serializer.save()
+                return Response({'status-code':200, 'errors':[], 'message':'Data updated Successfully..!'})
+        else:
+            raise serializers.ValidationError('Application Does not exists..!')
 
+    def delete(self,request):
+        app_id = request.data.get('id')
+        try:
+            app_data = AppInfo.objects.get(id=app_id)
+            app_data.delete()
+            return Response({'status-code':200, 'errors':[],'message':'Application deleted successfully'})
+        except:
+            raise serializers.ValidationError(str(app_id)+ ' is an invalid id')
 
-### Old Options API ###
-# class OptionsView(APIView):
-#     def get(self, request):
-#         options_data = OptionsData.objects.all()
-#         serializer = OptionSerializer(options_data, many=True)
-
-#         # Extracting integer IDs from options_data
-#         option_data_with_ids = [{'id': str(ObjectId(option.pk)), **serializer.data[i]} for i, option in enumerate(options_data)]
-
-#         return Response({
-#             'status-code': 200,
-#             'errors': [],
-#             'payload': {
-#                 'option_ids': option_data_with_ids,
-#             }
-#         }, status=status.HTTP_200_OK)
-
-#     def post(self, request):
-#         option_data = request.data
-#         data = dict()
-#         data['option_text'] = str(option_data['option_text']).capitalize()
-
-#         existing_options = OptionsData.objects.filter(option_text=data['option_text'])
-#         if len(existing_options) > 0:
-#             return Response({'status-code': 400, 'message': 'Option already Exists..!'}, status=status.HTTP_400_BAD_REQUEST)
-
-#         serializer = OptionSerializer(data=data)
-#         if serializer.is_valid():
-#             option = serializer.save()
-#             # Convert Optionid to string before including it in the response
-#             response_data = {
-#                 'status-code': 200,
-#                 'errors': [],
-#                 'message': 'Option Created Successfully',
-#                 # 'Optionid': str(option.Optionid),  # Convert to string
-#             }
-#             return Response(response_data, status=status.HTTP_201_CREATED)
-#         else:
-#             return Response({'status-code': 400, 'errors': serializer.errors, 'message': 'Validation errors occurred.'}, status=status.HTTP_400_BAD_REQUEST)
-
-#     def patch(self, request):
-#         data = dict()
-#         option_data = request.data
-#         option_id = option_data['id']
-#         option_text = str(option_data['option_text']).capitalize()
-#         data['id'] = option_id
-#         data['option_text'] = option_text
-#         existing_option = OptionsData.objects.get(id=option_id)
-#         serializer = OptionsData(existing_option, data=data,  partial=True)
-#         if serializer.is_valid():
-#             serializer.save()
-#             # Convert Optionid to string before including it in the response
-#             response_data = {
-#                 'status-code': 200,
-#                 'errors': [],
-#                 'message': 'Option Updated Successfully',
-#                 'Optionid': str(option_id),  # Convert to string
-#             }
-#             return Response(response_data, status=status.HTTP_200_OK)
-#         else:
-#             return Response({'status-code': 400, 'errors': serializer.errors, 'message': 'Validation errors occurred.'}, status=status.HTTP_400_BAD_REQUEST)
+class UserAppInfoApiview(APIView):
+    def get(self, request):
+        user_email = request.user
+        current_user = User.objects.get(email=user_email)
+        if current_user.role == "Auditor":
+            app_info = AppInfo.objects.filter(auditor_id=current_user.id)
+        if current_user.role == "Reviewer":
+            app_info = AppInfo.objects.filter(reviewer_id=current_user.id)
+        serializer = AppInfoSerializer(app_info, many=True)
+        return Response({'status-code':200, 'errors':[], 'payload':serializer.data},status=status.HTTP_200_OK)

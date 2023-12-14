@@ -71,3 +71,22 @@ class Options(models.Model):
 # Check the primary key type
 # print(OptionsData._meta.pk);
 
+class AppInfo(models.Model):
+    STATUS_CHOICES = [
+        ('assigned', 'Assigned'),
+        ('inprogress', 'In Progress'),
+        ('completed', 'Completed')
+    ]
+    app_name = models.CharField(max_length=100, unique=True)
+    app_category = models.CharField(max_length=100)
+    reviewer_id = models.IntegerField()
+    auditor_id = models.IntegerField()
+    status = models.CharField(max_length=25, choices=STATUS_CHOICES, default='assigned')
+    remark = models.CharField(max_length=255,null=True)
+    created_date = models.DateField(auto_now_add=True)
+    reviewer_assigned_date = models.DateField()
+    auditor_assigned_date = models.DateField()
+    updated_date = models.DateField(auto_now=True)
+
+
+
